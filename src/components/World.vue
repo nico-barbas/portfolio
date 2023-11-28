@@ -23,7 +23,7 @@ function handleLaunchClick(event) {
   }, 1000);
 }
 
-function startDemo(event) {
+function startDemo() {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -37,6 +37,7 @@ function startDemo(event) {
     canvas: target.value,
   });
   renderer.setSize(target.value.offsetWidth, target.value.offsetHeight);
+  renderer.setClearColor(new THREE.Color("#141b25"), 1.0);
 
   const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
   const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
