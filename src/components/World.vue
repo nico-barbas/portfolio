@@ -1,11 +1,14 @@
 <script setup>
 import * as THREE from "three";
 import { ref } from "vue";
+import { Player } from "./game/player";
 
 const target = ref(null);
 const launchText = ref(null);
 const loadingText = ref(null);
 const loading = ref(false);
+
+const player = ref(null);
 
 function handleLaunchClick(event) {
   if (loading.value) {
@@ -24,19 +27,22 @@ function handleLaunchClick(event) {
 }
 
 function startDemo() {
+  const targetRect = target.value.getBoundingClientRect();
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     75,
-    target.value.offsetWidth / target.value.offsetHeight,
+    targetRect.width / targetRect.height,
     0.1,
     1000
   );
   camera.position.z = 5;
+  camera.position.y = 5;
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
 
   const renderer = new THREE.WebGLRenderer({
     canvas: target.value,
   });
-  renderer.setSize(target.value.offsetWidth, target.value.offsetHeight);
+  renderer.setSize(targetRect.width, targetRect.height);
   renderer.setClearColor(new THREE.Color("#141b25"), 1.0);
 
   const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -44,8 +50,13 @@ function startDemo() {
   const cube = new THREE.Mesh(cubeGeometry, material);
   scene.add(cube);
 
+  player.value = new Player(scene, camera, targetRect);
+
   const animate = () => {
     requestAnimationFrame(animate);
+
+    player.value.updateSelection();
+
     renderer.render(scene, camera);
   };
   animate();
