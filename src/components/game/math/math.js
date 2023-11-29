@@ -58,3 +58,11 @@ export function quaternionFromToRotation(from, to) {
   result.z = v.z;
   return result.normalize();
 }
+
+/**
+ *
+ * @param {Number} degrees
+ */
+export function toRadians(degrees) {
+  return degrees * (Math.PI / 180);
+}

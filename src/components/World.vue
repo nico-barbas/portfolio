@@ -50,7 +50,7 @@ function startDemo() {
   renderer.setSize(targetRect.width, targetRect.height);
   renderer.setClearColor(new THREE.Color("#141b25"), 1.0);
 
-  const controls = new OrbitControls(camera, renderer.domElement);
+  // const controls = new OrbitControls(camera, renderer.domElement);
 
   player.value = new Player(scene, camera, targetRect);
   const world = new World(scene);
@@ -58,7 +58,7 @@ function startDemo() {
   const animate = () => {
     requestAnimationFrame(animate);
 
-    controls.update();
+    // controls.update();
     player.value.updateSelection();
     world.updateClouds();
 
