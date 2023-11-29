@@ -43,9 +43,8 @@ export class Player {
         });
         this.plane.position.set(0, 11, 0);
         this.plane.scale.set(0.5, 0.5, 0.5);
-        this.plane.quaternion.setFromAxisAngle(new Vector3(0, 1, 0), 0.5);
         scene.add(this.plane);
-        // this.updateCamera();
+        this.updateCamera();
         console.log(this.plane);
       },
       function (xhr) {
@@ -98,32 +97,36 @@ export class Player {
       .applyQuaternion(this.plane.quaternion)
       .normalize();
 
+    const mv = planeForward
+      .clone()
+      .add(planeRight.clone().multiplyScalar(this.planeTurnAngle));
+    // planeRight.normalize();
+
     const newPos = this.plane.position
       .clone()
-      .add(planeForward.clone().multiplyScalar(this.planeSpeed * dt * 5));
+      .add(mv.multiplyScalar(this.planeSpeed * dt * 5));
     const gravityUp = newPos.clone().normalize();
     newPos.copy(gravityUp).multiplyScalar(11);
-    console.log(newPos);
     this.plane.position.copy(newPos);
 
-    const q = quaternionFromToRotation(this.plane.up, gravityUp);
+    const q = quaternionFromToRotation(new Vector3(0, 1, 0), gravityUp);
     this.plane.quaternion.copy(q);
 
-    // const viewDistance = 6;
-    // const viewHeight = 6;
-    // const p = new Vector3(
-    //   this.plane.position.x +
-    //     -planeForward.x * viewDistance +
-    //     planeUp.x * viewHeight,
-    //   this.plane.position.y +
-    //     -planeForward.y * viewDistance +
-    //     planeUp.y * viewHeight,
-    //   this.plane.position.z +
-    //     -planeForward.z * viewDistance +
-    //     planeUp.z * viewHeight
-    // );
-    // this.camera.position.copy(p);
-    // this.camera.quaternion.copy(q);
-    // this.camera.rotateOnAxis(planeRight, toRadians(-60));
+    const viewDistance = 6;
+    const viewHeight = 6;
+    const p = new Vector3(
+      this.plane.position.x +
+        -planeForward.x * viewDistance +
+        planeUp.x * viewHeight,
+      this.plane.position.y +
+        -planeForward.y * viewDistance +
+        planeUp.y * viewHeight,
+      this.plane.position.z +
+        -planeForward.z * viewDistance +
+        planeUp.z * viewHeight
+    );
+    this.camera.position.copy(p);
+    this.camera.quaternion.copy(q);
+    this.camera.rotateOnAxis(planeRight, toRadians(-60));
   }
 }

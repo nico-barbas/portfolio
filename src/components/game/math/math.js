@@ -43,6 +43,7 @@ export function quaternionFromToRotation(from, to) {
 
   const eps = 1e-7;
   if (Math.abs(cosTheta + 1) < 2 * eps) {
+    console.log("?? what am i doing");
     const v = vector3Orthogonal(x);
     result.x = v.x;
     result.y = v.y;
@@ -50,6 +51,7 @@ export function quaternionFromToRotation(from, to) {
     result.w = 0;
     return result.normalize();
   }
+  console.log("?? what am i not doing");
 
   const v = x.cross(y);
   result.w = cosTheta + 1;
