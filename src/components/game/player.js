@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { Vector3, Scene, Camera } from "three";
+import { Vector3, Quaternion, Scene, Camera } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { quaternionFromToRotation, toRadians } from "./math/math";
 
@@ -8,6 +8,7 @@ const ROTATION_SPEED = 10;
 export class Player {
   planeSpeed = 0;
   planeTurnAngle = 0;
+  planeTotalTurnAngle = 0;
 
   /**
    *
@@ -77,15 +78,17 @@ export class Player {
   }
 
   updateSelection() {
-    if (!this.plane || this.planeSpeed === 0) {
+    if (!this.plane) {
       return;
     }
-
+    this.planeTotalTurnAngle += this.planeTurnAngle;
     this.updateCamera();
   }
 
   updateCamera() {
     const dt = 1 / 60;
+
+    console.log(this.plane.up);
 
     const planeForward = new Vector3(0, 0, -1)
       .applyQuaternion(this.plane.quaternion)
@@ -93,24 +96,27 @@ export class Player {
     const planeUp = new Vector3(0, 1, 0)
       .applyQuaternion(this.plane.quaternion)
       .normalize();
-    const planeRight = new Vector3(1, 0, 0)
-      .applyQuaternion(this.plane.quaternion)
-      .normalize();
-
-    const mv = planeForward
-      .clone()
-      .add(planeRight.clone().multiplyScalar(this.planeTurnAngle));
-    // planeRight.normalize();
 
     const newPos = this.plane.position
       .clone()
-      .add(mv.multiplyScalar(this.planeSpeed * dt * 5));
+      .add(planeForward.clone().multiplyScalar(this.planeSpeed * dt * 5));
     const gravityUp = newPos.clone().normalize();
     newPos.copy(gravityUp).multiplyScalar(11);
     this.plane.position.copy(newPos);
 
-    const q = quaternionFromToRotation(new Vector3(0, 1, 0), gravityUp);
-    this.plane.quaternion.copy(q);
+    const currentQ = new Quaternion();
+    const turnQ = new Quaternion().setFromAxisAngle(
+      gravityUp,
+      this.planeTotalTurnAngle * dt * 2
+    );
+    currentQ.multiply(turnQ);
+    const q = quaternionFromToRotation(this.plane.up, gravityUp);
+    currentQ.multiply(q);
+    this.plane.quaternion.copy(currentQ);
+
+    const planeRight = new Vector3(1, 0, 0)
+      .applyQuaternion(this.plane.quaternion)
+      .normalize();
 
     const viewDistance = 6;
     const viewHeight = 6;
@@ -126,7 +132,11 @@ export class Player {
         planeUp.z * viewHeight
     );
     this.camera.position.copy(p);
-    this.camera.quaternion.copy(q);
-    this.camera.rotateOnAxis(planeRight, toRadians(-60));
+
+    const camRotQ = new Quaternion().setFromAxisAngle(
+      planeRight,
+      toRadians(-60)
+    );
+    this.camera.quaternion.copy(camRotQ.multiply(currentQ));
   }
 }
