@@ -6,6 +6,9 @@ import { quaternionFromToRotation, toRadians } from "./math/math";
 const ROTATION_SPEED = 10;
 
 export class Player {
+  planeSpeed = 0;
+  planeTurnAngle = 0;
+
   /**
    *
    * @param {Scene} scene
@@ -17,11 +20,15 @@ export class Player {
     this.camera = camera;
     this.targetRect = targetRect;
     this.raycaster = new THREE.Raycaster();
-    this.pointerPos = new THREE.Vector2();
-    this.previousPointerPos = new THREE.Vector2();
-    this.dragging = false;
 
-    this.worldRotationMat = new THREE.Matrix4();
+    const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    const cube1 = new THREE.Mesh(cubeGeometry, material);
+    const cube2 = new THREE.Mesh(cubeGeometry, material);
+    scene.add(cube1, cube2);
+    cube1.position.set(0, 10, 0);
+    cube2.position.set(0, -10, 0);
 
     const loader = new GLTFLoader();
 
@@ -36,27 +43,50 @@ export class Player {
         });
         this.plane.position.set(0, 11, 0);
         this.plane.scale.set(0.5, 0.5, 0.5);
+        this.plane.quaternion.setFromAxisAngle(new Vector3(0, 1, 0), 0.5);
         scene.add(this.plane);
-
+        // this.updateCamera();
         console.log(this.plane);
       },
       function (xhr) {
         console.log(xhr);
       }
     );
+
+    window.addEventListener("keydown", this.beginPlaneMovement.bind(this));
+    window.addEventListener("keyup", this.endPlaneMovement.bind(this));
+  }
+
+  beginPlaneMovement(event) {
+    if (event.key === "w") {
+      this.planeSpeed = 1;
+    } else if (event.key === "a") {
+      this.planeTurnAngle = -1;
+    } else if (event.key === "d") {
+      this.planeTurnAngle = 1;
+    }
+  }
+
+  endPlaneMovement(event) {
+    if (event.key === "w") {
+      this.planeSpeed = 0;
+    } else if (event.key === "a") {
+      this.planeTurnAngle = 0;
+    } else if (event.key === "d") {
+      this.planeTurnAngle = 0;
+    }
   }
 
   updateSelection() {
-    // this.raycaster.setFromCamera(this.pointerPos, this.camera);
-    // const hits = this.raycaster.intersectObjects(this.scene.children, false);
-
-    // if (hits.length > 0) {
-    //   console.log(hits);
-    // }
-
-    if (!this.plane) {
+    if (!this.plane || this.planeSpeed === 0) {
       return;
     }
+
+    this.updateCamera();
+  }
+
+  updateCamera() {
+    const dt = 1 / 60;
 
     const planeForward = new Vector3(0, 0, -1)
       .applyQuaternion(this.plane.quaternion)
@@ -70,32 +100,30 @@ export class Player {
 
     const newPos = this.plane.position
       .clone()
-      .add(planeForward.clone().multiplyScalar(0.1));
+      .add(planeForward.clone().multiplyScalar(this.planeSpeed * dt * 5));
     const gravityUp = newPos.clone().normalize();
     newPos.copy(gravityUp).multiplyScalar(11);
+    console.log(newPos);
     this.plane.position.copy(newPos);
 
-    const q = quaternionFromToRotation(new Vector3(0, 1, 0), gravityUp);
+    const q = quaternionFromToRotation(this.plane.up, gravityUp);
     this.plane.quaternion.copy(q);
 
-    const viewDistance = 6;
-    const viewHeight = 6;
-    const p = new Vector3(
-      this.plane.position.x +
-        -planeForward.x * viewDistance +
-        planeUp.x * viewHeight,
-      this.plane.position.y +
-        -planeForward.y * viewDistance +
-        planeUp.y * viewHeight,
-      this.plane.position.z +
-        -planeForward.z * viewDistance +
-        planeUp.z * viewHeight
-    );
-    this.camera.position.copy(p);
-    this.camera.quaternion.copy(q);
-    this.camera.rotateOnAxis(planeRight, toRadians(-60));
-    // this.camera.lookAt(this.plane.position);
-
-    // const qc =
+    // const viewDistance = 6;
+    // const viewHeight = 6;
+    // const p = new Vector3(
+    //   this.plane.position.x +
+    //     -planeForward.x * viewDistance +
+    //     planeUp.x * viewHeight,
+    //   this.plane.position.y +
+    //     -planeForward.y * viewDistance +
+    //     planeUp.y * viewHeight,
+    //   this.plane.position.z +
+    //     -planeForward.z * viewDistance +
+    //     planeUp.z * viewHeight
+    // );
+    // this.camera.position.copy(p);
+    // this.camera.quaternion.copy(q);
+    // this.camera.rotateOnAxis(planeRight, toRadians(-60));
   }
 }
