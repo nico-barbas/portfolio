@@ -2,6 +2,8 @@
 import * as THREE from "three";
 import { ref } from "vue";
 import { Player } from "./game/player";
+import { World } from "./game/world";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const target = ref(null);
 const launchText = ref(null);
@@ -35,9 +37,12 @@ function startDemo() {
     0.1,
     1000
   );
-  camera.position.z = 5;
-  camera.position.y = 5;
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  camera.position.z = 15;
+  camera.position.y = 15;
+
+  const directional = new THREE.DirectionalLight(0xffffff, 10);
+  const ambient = new THREE.AmbientLight(0xffffff, 5);
+  scene.add(directional, ambient);
 
   const renderer = new THREE.WebGLRenderer({
     canvas: target.value,
@@ -45,17 +50,17 @@ function startDemo() {
   renderer.setSize(targetRect.width, targetRect.height);
   renderer.setClearColor(new THREE.Color("#141b25"), 1.0);
 
-  const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-  const cube = new THREE.Mesh(cubeGeometry, material);
-  scene.add(cube);
+  const controls = new OrbitControls(camera, renderer.domElement);
 
   player.value = new Player(scene, camera, targetRect);
+  const world = new World(scene);
 
   const animate = () => {
     requestAnimationFrame(animate);
 
+    controls.update();
     player.value.updateSelection();
+    world.updateClouds();
 
     renderer.render(scene, camera);
   };
