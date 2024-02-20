@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { World } from "./world";
 import { Player } from "./player";
 
-export function initGame(displayTarget) {
+export function initGame(displayTarget, projects) {
   const displayRect = displayTarget.getBoundingClientRect();
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
@@ -24,7 +24,7 @@ export function initGame(displayTarget) {
   renderer.setSize(displayRect.width, displayRect.height);
   renderer.setClearColor(new THREE.Color("#141b25"), 1.0);
 
-  const world = new World(scene);
+  const world = new World(scene, projects);
   const player = new Player(scene, camera, world);
 
   const animate = () => {

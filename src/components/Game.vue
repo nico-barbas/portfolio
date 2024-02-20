@@ -27,7 +27,7 @@ function handleLaunchClick(event) {
 }
 
 function startDemo() {
-  initGame(target.value);
+  initGame(target.value, props.projects);
 }
 </script>
 

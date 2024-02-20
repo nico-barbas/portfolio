@@ -6,6 +6,7 @@ import { Vector3, Sphere, Quaternion } from "three";
 import { Waypoint } from "./waypoint";
 
 const CLOUD_COUNT = 10;
+export const WORLD_RADIUS = 10;
 
 /**
  * @typedef {Object} Cloud
@@ -27,7 +28,9 @@ export class World {
   /** @type {THREE.Object3D} */
   dummy = new THREE.Object3D();
 
-  constructor(scene) {
+  constructor(scene, projects) {
+    console.log(projects);
+
     this.position = new Vector3(0, 0, 0);
     this.cloudInstance = undefined;
     this.cloudMatrix = new THREE.Matrix4();
@@ -43,7 +46,7 @@ export class World {
       "models/planet/planet.glb",
       function (gltf) {
         const model = gltf.scene;
-        model.scale.set(10, 10, 10);
+        model.scale.set(WORLD_RADIUS, WORLD_RADIUS, WORLD_RADIUS);
         scene.add(model);
       },
       function (xhr) {
@@ -105,16 +108,49 @@ export class World {
     );
 
     loader.load("models/flag.glb", (gltf) => {
-      const model = gltf.scene;
-      model.position.set(0, 10, 0);
-      scene.add(model);
+      const globalUp = new Vector3(0, 1, 0);
 
-      const project = new Waypoint(1, 0, 10, 0);
-      const origin = new Vector3(0, 10, 0);
-      const min = origin.clone().set(origin.x - 1, origin.y - 1, origin.z - 1);
-      const max = origin.clone().set(origin.x + 1, origin.y + 1, origin.z + 1);
-      const waypoint = new THREE.Box3(min, max);
-      this.waypoints.push(project);
+      const s = gltf.scene;
+      s.traverse((children) => {
+        if (children.type === "Mesh") {
+          const waypointInstances = new THREE.InstancedMesh(
+            children.geometry,
+            children.material,
+            projects.length
+          );
+          waypointInstances.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+          for (let i = 0; i < projects.length; i += 1) {
+            const projectInfo = projects[i];
+
+            this.dummy.position
+              .set(projectInfo.x, projectInfo.y, projectInfo.z)
+              .normalize()
+              .multiplyScalar(WORLD_RADIUS);
+            this.dummy.quaternion.setFromUnitVectors(
+              globalUp,
+              this.dummy.position.clone().normalize()
+            );
+            this.dummy.scale.set(1, 1, 1);
+            this.dummy.updateMatrix();
+            console.log(this.dummy);
+            waypointInstances.setMatrixAt(i, this.dummy.matrix);
+          }
+          scene.add(waypointInstances);
+        }
+      });
+
+      for (let i = 0; i < projects.length; i += 1) {
+        const projectInfo = projects[i];
+
+        const project = new Waypoint(
+          projectInfo.id,
+          projectInfo.x * WORLD_RADIUS,
+          projectInfo.y * WORLD_RADIUS,
+          projectInfo.z * WORLD_RADIUS
+        );
+        this.waypoints.push(project);
+      }
     });
   }
 
