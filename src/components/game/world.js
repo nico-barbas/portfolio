@@ -29,15 +29,12 @@ export class World {
   dummy = new THREE.Object3D();
 
   constructor(scene, projects) {
-    console.log(projects);
-
     this.position = new Vector3(0, 0, 0);
     this.cloudInstance = undefined;
     this.cloudMatrix = new THREE.Matrix4();
     this.cloudMatrix.makeRotationZ(0.02);
 
     const skyTexture = new THREE.TextureLoader().load("textures/sky.jpg");
-    console.log(skyTexture);
     scene.background = skyTexture;
 
     const loader = new GLTFLoader();
@@ -99,8 +96,6 @@ export class World {
           });
         }
         scene.add(this.cloudInstance);
-
-        console.log(this.cloudInstance);
       },
       function (xhr) {
         console.log(xhr);
@@ -118,7 +113,7 @@ export class World {
             children.material,
             projects.length
           );
-          waypointInstances.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+          waypointInstances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
 
           for (let i = 0; i < projects.length; i += 1) {
             const projectInfo = projects[i];
@@ -133,7 +128,6 @@ export class World {
             );
             this.dummy.scale.set(1, 1, 1);
             this.dummy.updateMatrix();
-            console.log(this.dummy);
             waypointInstances.setMatrixAt(i, this.dummy.matrix);
           }
           scene.add(waypointInstances);
@@ -150,8 +144,59 @@ export class World {
           projectInfo.z * WORLD_RADIUS
         );
         this.waypoints.push(project);
+
+        if (i > 0) {
+          const previousProjectInfo = projects[i - 1];
+          this.buildPath(
+            scene,
+            new Vector3(
+              previousProjectInfo.x * WORLD_RADIUS,
+              previousProjectInfo.y * WORLD_RADIUS,
+              previousProjectInfo.z * WORLD_RADIUS
+            ),
+            new Vector3(
+              projectInfo.x * WORLD_RADIUS,
+              projectInfo.y * WORLD_RADIUS,
+              projectInfo.z * WORLD_RADIUS
+            )
+          );
+        }
       }
     });
+  }
+
+  /**
+   *
+   * @param {THREE.Scene} scene
+   * @param {Vector3} from
+   * @param {Vector3} to
+   */
+  buildPath(scene, from, to) {
+    // the frequency and amplitude of the wave are based on distance
+    const stepLength = 0.5;
+    const waveAmplitude = 0.3;
+
+    const dir = to.clone().sub(from).normalize();
+    const steps = from.distanceTo(to) / stepLength;
+
+    const geometry = new THREE.SphereGeometry(0.2, 32, 16);
+    const material = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    for (let i = 0; i < steps; i += 1) {
+      const d = dir.clone().multiplyScalar(i * stepLength);
+
+      const indicator = new THREE.Mesh(geometry, material);
+      indicator.position.copy(from).add(d).normalize();
+
+      const t = Math.sin((i / steps) * Math.PI * 2);
+      const offset = dir
+        .clone()
+        .cross(indicator.position.clone())
+        .normalize()
+        .multiplyScalar(t * waveAmplitude);
+
+      indicator.position.add(offset).normalize().multiplyScalar(WORLD_RADIUS);
+      scene.add(indicator);
+    }
   }
 
   updateClouds() {
