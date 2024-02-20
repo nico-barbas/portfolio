@@ -1,35 +1,60 @@
 import * as THREE from "three";
 import { Vector3, Quaternion, Scene, Camera } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { quaternionFromToRotation, toRadians } from "./math/math";
+import { toRadians } from "./math/math";
+import { World } from "./world";
 
-const ROTATION_SPEED = 10;
+const MAX_POINTS = 500;
+const DEBUG_MODE = false;
 
 export class Player {
+  /** @type {number} */
   planeSpeed = 0;
+  /** @type {number} */
   planeTurnAngle = 0;
-  planeTotalTurnAngle = 0;
+
+  localRight = new Vector3();
+  localUp = new Vector3();
+  forward = new Vector3();
+
+  /** @type {Waypoint | null} */
+  currentWaypoint;
+  lineGeometry;
 
   /**
    *
    * @param {Scene} scene
    * @param {Camera} camera
-   * @param {*} targetRect
+   * @param {World} camera
    */
-  constructor(scene, camera, targetRect) {
+  constructor(scene, camera, world) {
     this.scene = scene;
     this.camera = camera;
-    this.targetRect = targetRect;
-    this.raycaster = new THREE.Raycaster();
+    this.world = world;
 
-    const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    if (DEBUG_MODE) {
+      const dbgGeometry = new THREE.SphereGeometry(2);
+      const dbgMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        wireframe: true,
+      });
+      this.dbgColliderMesh = new THREE.Mesh(dbgGeometry, dbgMaterial);
+      this.scene.add(this.dbgColliderMesh);
 
-    const cube1 = new THREE.Mesh(cubeGeometry, material);
-    const cube2 = new THREE.Mesh(cubeGeometry, material);
-    scene.add(cube1, cube2);
-    cube1.position.set(0, 10, 0);
-    cube2.position.set(0, -10, 0);
+      this.lineGeometry = new THREE.BufferGeometry();
+      this.lineGeometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(3 * MAX_POINTS), 3)
+      );
+      this.lineGeometry.setDrawRange(0, 8);
+
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: 0xff0000,
+        linewidth: 2,
+      });
+      const line = new THREE.Line(this.lineGeometry, lineMaterial);
+      scene.add(line);
+    }
 
     const loader = new GLTFLoader();
 
@@ -45,8 +70,6 @@ export class Player {
         this.plane.position.set(0, 11, 0);
         this.plane.scale.set(0.5, 0.5, 0.5);
         scene.add(this.plane);
-        this.updateCamera();
-        console.log(this.plane);
       },
       function (xhr) {
         console.log(xhr);
@@ -55,6 +78,7 @@ export class Player {
 
     window.addEventListener("keydown", this.beginPlaneMovement.bind(this));
     window.addEventListener("keyup", this.endPlaneMovement.bind(this));
+    window.addEventListener("keyup", this.handleInteract.bind(this));
   }
 
   beginPlaneMovement(event) {
@@ -77,66 +101,68 @@ export class Player {
     }
   }
 
+  handleInteract(event) {
+    if (event.key === "e" && this.currentWaypoint) {
+      this.currentWaypoint.openAssociatedProject();
+    }
+  }
+
   updateSelection() {
     if (!this.plane) {
       return;
     }
-    this.planeTotalTurnAngle += this.planeTurnAngle;
-    this.updateCamera();
+
+    this.updatePosition();
+    this.currentWaypoint = this.world.getCurrentWaypoint(this.plane.position);
   }
 
-  updateCamera() {
+  updatePosition() {
     const dt = 1 / 60;
 
-    console.log(this.plane.up);
-
-    const planeForward = new Vector3(0, 0, -1)
+    this.localRight
+      .set(1, 0, 0)
       .applyQuaternion(this.plane.quaternion)
       .normalize();
-    const planeUp = new Vector3(0, 1, 0)
-      .applyQuaternion(this.plane.quaternion)
-      .normalize();
+    this.localUp.copy(this.plane.position).normalize();
+    this.forward.copy(this.localRight).cross(this.localUp).normalize().negate();
 
     const newPos = this.plane.position
       .clone()
-      .add(planeForward.clone().multiplyScalar(this.planeSpeed * dt * 5));
-    const gravityUp = newPos.clone().normalize();
-    newPos.copy(gravityUp).multiplyScalar(11);
+      .add(this.forward.clone().multiplyScalar(this.planeSpeed * dt * 5))
+      .normalize()
+      .multiplyScalar(11);
     this.plane.position.copy(newPos);
 
-    const currentQ = new Quaternion();
-    const turnQ = new Quaternion().setFromAxisAngle(
-      gravityUp,
-      this.planeTotalTurnAngle * dt * 2
+    const q = new Quaternion().setFromUnitVectors(
+      this.localUp,
+      newPos.normalize()
     );
-    currentQ.multiply(turnQ);
-    const q = quaternionFromToRotation(this.plane.up, gravityUp);
-    currentQ.multiply(q);
-    this.plane.quaternion.copy(currentQ);
-
-    const planeRight = new Vector3(1, 0, 0)
-      .applyQuaternion(this.plane.quaternion)
-      .normalize();
+    const rotQ = new Quaternion().setFromAxisAngle(
+      this.localUp,
+      toRadians(this.planeTurnAngle)
+    );
+    q.multiplyQuaternions(rotQ, q);
+    this.plane.quaternion.multiplyQuaternions(q, this.plane.quaternion);
 
     const viewDistance = 6;
     const viewHeight = 6;
     const p = new Vector3(
       this.plane.position.x +
-        -planeForward.x * viewDistance +
-        planeUp.x * viewHeight,
+        -this.forward.x * viewDistance +
+        this.localUp.x * viewHeight,
       this.plane.position.y +
-        -planeForward.y * viewDistance +
-        planeUp.y * viewHeight,
+        -this.forward.y * viewDistance +
+        this.localUp.y * viewHeight,
       this.plane.position.z +
-        -planeForward.z * viewDistance +
-        planeUp.z * viewHeight
+        -this.forward.z * viewDistance +
+        this.localUp.z * viewHeight
     );
     this.camera.position.copy(p);
 
     const camRotQ = new Quaternion().setFromAxisAngle(
-      planeRight,
+      this.localRight,
       toRadians(-60)
     );
-    this.camera.quaternion.copy(camRotQ.multiply(currentQ));
+    this.camera.quaternion.copy(camRotQ.multiply(this.plane.quaternion));
   }
 }

@@ -39,45 +39,45 @@ export function quaternionFromToRotation(from, to) {
   const x = from.clone().normalize();
   const y = to.clone().normalize();
 
-  // const cosTheta = x.dot(y);
+  const cosTheta = x.dot(y);
 
-  // const eps = 1e-7;
-  // if (Math.abs(cosTheta + 1) < 2 * eps) {
-  //   const v = vector3Orthogonal(x);
-  //   result.x = v.x;
-  //   result.y = v.y;
-  //   result.z = v.z;
-  //   result.w = 0;
-  //   return result.normalize();
-  // }
-
-  // const v = x.cross(y);
-  // result.w = cosTheta + 1;
-  // result.x = v.x;
-  // result.y = v.y;
-  // result.z = v.z;
-
-  const normUV = Math.sqrt(x.dot(x), y.dot(y));
-  let realPart = normUV + x.dot(y);
-  const v = new Vector3();
-
-  const eps = 1e-6;
-  if (realPart < eps * normUV) {
-    realPart = 0;
-    v.copy(vector3Orthogonal(x));
-    // if (Math.abs(x.x) > Math.abs(x.z)) {
-    //   v.set(-x.y, x.x, 0);
-    // } else {
-    //   v.set(0, -x.z, x.y);
-    // }
-  } else {
-    v.copy(x.cross(y));
+  const eps = 1e-7;
+  if (Math.abs(cosTheta + 1) < 2 * eps) {
+    const v = vector3Orthogonal(x);
+    result.x = v.x;
+    result.y = v.y;
+    result.z = v.z;
+    result.w = 0;
+    return result.normalize();
   }
 
+  const v = x.cross(y);
+  result.w = cosTheta + 1;
   result.x = v.x;
   result.y = v.y;
   result.z = v.z;
-  result.w = realPart;
+
+  // const normUV = Math.sqrt(x.dot(x), y.dot(y));
+  // let realPart = normUV + x.dot(y);
+  // const v = new Vector3();
+
+  // const eps = 1e-6;
+  // if (realPart < eps * normUV) {
+  //   realPart = 0;
+  //   v.copy(vector3Orthogonal(x));
+  //   // if (Math.abs(x.x) > Math.abs(x.z)) {
+  //   //   v.set(-x.y, x.x, 0);
+  //   // } else {
+  //   //   v.set(0, -x.z, x.y);
+  //   // }
+  // } else {
+  //   v.copy(x.cross(y));
+  // }
+
+  // result.x = v.x;
+  // result.y = v.y;
+  // result.z = v.z;
+  // result.w = realPart;
   return result.normalize();
 }
 
