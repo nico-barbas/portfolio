@@ -4,10 +4,6 @@ export class Timer {
     this.time = 0;
   }
 
-  get progress() {
-    return this.time / this.duration;
-  }
-
   advance(dt) {
     this.time += dt;
 
@@ -17,5 +13,12 @@ export class Timer {
     }
 
     return false;
+  }
+
+  /**
+   * @returns {number}
+   */
+  normalize() {
+    return this.time / this.duration;
   }
 }

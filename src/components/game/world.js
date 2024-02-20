@@ -4,20 +4,21 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { quaternionFromToRotation, toRadians } from "./math/math";
 import { Vector3, Sphere, Quaternion } from "three";
 import { Waypoint } from "./waypoint";
-import { Timer } from "./math/timer";
 
 const CLOUD_COUNT = 10;
 
 /**
  * @typedef {Object} Cloud
- * @property {Timer} timer
- * @property {Number} minScale
- * @property {Number} scaleT
- * @property {Number} positionT
+ * @property {Vector3} position
+ * @property {Vector3} positionOffset
+ * @property {Vector3} rotation
+ * @property {Vector3} scale
+ * @property {Vector3} scaleOffset
+ * @property {number} offset
  */
 
 export class World {
-  /** @type {Cloud} */
+  /** @type {Cloud[]} */
   clouds = [];
 
   /** @type {Waypoint[]} */
@@ -28,7 +29,7 @@ export class World {
 
   constructor(scene) {
     this.position = new Vector3(0, 0, 0);
-    this.cloud = undefined;
+    this.cloudInstance = undefined;
     this.cloudMatrix = new THREE.Matrix4();
     this.cloudMatrix.makeRotationZ(0.02);
 
@@ -61,12 +62,12 @@ export class World {
           }
         });
 
-        this.cloud = new THREE.InstancedMesh(
+        this.cloudInstance = new THREE.InstancedMesh(
           model.geometry,
           model.material,
           CLOUD_COUNT
         );
-        this.cloud.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.cloudInstance.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
         const up = new Vector3(0, 1, 0);
         for (let i = 0; i < CLOUD_COUNT; i += 1) {
@@ -83,22 +84,20 @@ export class World {
           this.dummy.position.multiplyScalar(12);
           this.dummy.updateMatrix();
 
-          this.cloud.setMatrixAt(i, this.dummy.matrix);
+          this.cloudInstance.setMatrixAt(i, this.dummy.matrix);
 
           this.clouds.push({
             position: this.dummy.position.clone(),
             positionOffset: this.dummy.position.clone().normalize(),
             rotation: this.dummy.quaternion.clone(),
             scale: this.dummy.scale.clone(),
-            minScale: scale,
-            timer: new Timer(2),
-            dir: 1,
-            acc: 0,
+            scaleOffset: new Vector3(),
+            offset: 0,
           });
         }
-        scene.add(this.cloud);
+        scene.add(this.cloudInstance);
 
-        console.log(this.cloud);
+        console.log(this.cloudInstance);
       },
       function (xhr) {
         console.log(xhr);
@@ -115,40 +114,35 @@ export class World {
       const min = origin.clone().set(origin.x - 1, origin.y - 1, origin.z - 1);
       const max = origin.clone().set(origin.x + 1, origin.y + 1, origin.z + 1);
       const waypoint = new THREE.Box3(min, max);
-      // console.log(waypoint);
       this.waypoints.push(project);
     });
   }
 
   updateClouds() {
-    if (!this.cloud) {
+    if (!this.cloudInstance) {
       return;
     }
 
     const dt = 1 / 60;
     for (let i = 0; i < CLOUD_COUNT; i += 1) {
       const cloud = this.clouds[i];
-      if (cloud.timer.advance(dt)) {
-        cloud.dir = -cloud.dir;
-      }
-      cloud.acc += dt;
+      cloud.offset += dt;
 
-      cloud.scale.addScalar(dt * 0.2 * cloud.dir);
-      cloud.positionOffset.normalize().multiplyScalar(Math.cos(cloud.acc));
-      cloud.position.add(cloud.positionOffset);
+      const t = (Math.sin(cloud.offset) + 1) / 2;
 
-      // if (i === 0) {
-      //   console.log(cloud.positionOffset);
-      // }
+      cloud.positionOffset.normalize().multiplyScalar(t);
+      cloud.scaleOffset.set(t * 0.1, t * 0.1, t * 0.1);
 
-      this.dummy.position.copy(cloud.position);
+      this.dummy.position
+        .set(0, 0, 0)
+        .addVectors(cloud.position, cloud.positionOffset);
       this.dummy.quaternion.copy(cloud.rotation);
-      this.dummy.scale.copy(cloud.scale);
+      this.dummy.scale.set(0, 0, 0).addVectors(cloud.scale, cloud.scaleOffset);
       this.dummy.updateMatrix();
 
-      this.cloud.setMatrixAt(i, this.dummy.matrix);
+      this.cloudInstance.setMatrixAt(i, this.dummy.matrix);
     }
-    this.cloud.instanceMatrix.needsUpdate = true;
+    this.cloudInstance.instanceMatrix.needsUpdate = true;
   }
 
   /**
