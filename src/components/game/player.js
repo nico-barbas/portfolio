@@ -2,14 +2,18 @@ import * as THREE from "three";
 import { Vector3, Quaternion, Scene, Camera } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { toRadians } from "./math/math";
-import { World } from "./world";
+import { FLY_HEIGHT, World } from "./world";
 
 const MAX_POINTS = 500;
 const DEBUG_MODE = false;
 
 export class Player {
   /** @type {number} */
-  planeSpeed = 0;
+  planeSpeed = -1;
+  /** @type {number} */
+  planeAcceleration = 0;
+  /** @type {number} */
+  planeTurnSpeed = 0;
   /** @type {number} */
   planeTurnAngle = 0;
 
@@ -67,8 +71,10 @@ export class Player {
             this.plane = children;
           }
         });
-        this.plane.position.set(0, 11, 0);
+        this.plane.position.set(0, FLY_HEIGHT, 0);
         this.plane.scale.set(0.5, 0.5, 0.5);
+        this.plane.castShadow = true;
+        this.plane.receiveShadow = true;
         scene.add(this.plane);
       },
       function (xhr) {
@@ -93,7 +99,7 @@ export class Player {
 
   endPlaneMovement(event) {
     if (event.key === "w") {
-      this.planeSpeed = 0;
+      this.planeSpeed = -1;
     } else if (event.key === "a") {
       this.planeTurnAngle = 0;
     } else if (event.key === "d") {
@@ -107,18 +113,26 @@ export class Player {
     }
   }
 
-  updateSelection() {
+  /**
+   *
+   * @param {number} dt
+   */
+  update(dt) {
     if (!this.plane) {
       return;
     }
 
-    this.updatePosition();
+    this.planeAcceleration = Math.min(
+      Math.max(this.planeAcceleration + 0.5 * this.planeSpeed, 1),
+      10
+    );
+    // const sign = Math.sign(this.planeTurnAngle);
+    // this.planeTurnAngle = Math.min(this.planeTurnAngle + 0.1 * sign)
+    this.updatePosition(dt);
     this.currentWaypoint = this.world.getCurrentWaypoint(this.plane.position);
   }
 
-  updatePosition() {
-    const dt = 1 / 60;
-
+  updatePosition(dt) {
     this.localRight
       .set(1, 0, 0)
       .applyQuaternion(this.plane.quaternion)
@@ -128,9 +142,9 @@ export class Player {
 
     const newPos = this.plane.position
       .clone()
-      .add(this.forward.clone().multiplyScalar(this.planeSpeed * dt * 5))
+      .add(this.forward.clone().multiplyScalar(this.planeAcceleration * dt))
       .normalize()
-      .multiplyScalar(11);
+      .multiplyScalar(FLY_HEIGHT);
     this.plane.position.copy(newPos);
 
     const q = new Quaternion().setFromUnitVectors(

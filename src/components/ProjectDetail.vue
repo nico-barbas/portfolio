@@ -3,8 +3,6 @@ import {} from "vue";
 
 const props = defineProps(["opened", "project"]);
 const emit = defineEmits(["closedetail"]);
-
-console.log(props);
 </script>
 
 <template>
@@ -20,8 +18,22 @@ console.log(props);
         X
       </div>
 
-      <div class="flex justify-center text-stone-600">
-        <h3>{{ props.project.title }}</h3>
+      <div class="flex flex-col justify-center items-center text-stone-600">
+        <h2 class="mb-2">{{ project.title }}</h2>
+        <h3>
+          {{ project.dateStart }} -
+          {{ project.dateEnd ? project.dateEnd : "Present" }}
+        </h3>
+
+        <div class="w-2/3 flex flex-wrap justify-center gap-1 my-2">
+          <div v-for="tag in project.tags" class="bg-red-100 rounded-xl">
+            <p class="text-center px-3">{{ tag }}</p>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <p>{{ project.description }}</p>
+        </div>
       </div>
     </div>
     <p></p>

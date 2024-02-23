@@ -22,6 +22,7 @@ function handleProjectOpen(event) {
 
 function closeProjectDetail() {
   detailOpened.value = false;
+  window.dispatchEvent(new CustomEvent("projectclosed"));
 }
 </script>
 
