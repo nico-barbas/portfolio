@@ -16,6 +16,8 @@ export class Player {
   planeTurnSpeed = 0;
   /** @type {number} */
   planeTurnAngle = 0;
+  /** @type {number} */
+  planeOffsety = 0;
 
   localRight = new Vector3();
   localUp = new Vector3();
@@ -87,6 +89,12 @@ export class Player {
     window.addEventListener("keyup", this.handleInteract.bind(this));
   }
 
+  get modulatedPlaneOffsety() {
+    const a = 0.3;
+    const f = 0.4;
+    return a * Math.sin(Math.PI * 2 * f * this.planeOffsety);
+  }
+
   beginPlaneMovement(event) {
     if (event.key === "w") {
       this.planeSpeed = 1;
@@ -126,8 +134,8 @@ export class Player {
       Math.max(this.planeAcceleration + 0.5 * this.planeSpeed, 1),
       10
     );
-    // const sign = Math.sign(this.planeTurnAngle);
-    // this.planeTurnAngle = Math.min(this.planeTurnAngle + 0.1 * sign)
+    this.planeOffsety += dt;
+
     this.updatePosition(dt);
     this.currentWaypoint = this.world.getCurrentWaypoint(this.plane.position);
   }
@@ -144,7 +152,7 @@ export class Player {
       .clone()
       .add(this.forward.clone().multiplyScalar(this.planeAcceleration * dt))
       .normalize()
-      .multiplyScalar(FLY_HEIGHT);
+      .multiplyScalar(FLY_HEIGHT + this.modulatedPlaneOffsety);
     this.plane.position.copy(newPos);
 
     const q = new Quaternion().setFromUnitVectors(
